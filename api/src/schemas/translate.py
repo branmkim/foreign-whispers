@@ -10,3 +10,13 @@ class TranslateResponse(BaseModel):
     target_language: str
     text: str
     segments: list[dict[str, Any]]
+
+
+class TranslateTextRequest(BaseModel):
+    text: str
+    from_code: str = "es"
+    to_code: str = "en"
+
+
+class TranslateTextResponse(BaseModel):
+    text: str

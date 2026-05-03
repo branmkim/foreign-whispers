@@ -6,8 +6,8 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 
-def test_synced_segment_stretch_factor_changes_speed(monkeypatch):
-    """stretch_factor changes the computed speed ratio: larger factor = lower speed_factor."""
+def test_synced_segment_aligned_speed_uses_raw_over_target(monkeypatch):
+    """Aligned mode fits raw duration to target_sec via duration_ratio (clamped)."""
     import api.src.services.tts_engine as tts
     monkeypatch.setattr(tts, "_ALIGNMENT_ENABLED", True)
     from api.src.services.tts_engine import _synced_segment_audio
@@ -26,14 +26,12 @@ def test_synced_segment_stretch_factor_changes_speed(monkeypatch):
             shutil.copy(raw_wav, file_path)
         engine.tts_to_file.side_effect = fake_tts
 
-        # stretch_factor=1.0: effective_target=1.0, speed=1.5 → clamped to 1.25
-        _, sf_tight, _ = _synced_segment_audio(engine, "hola", target_sec=1.0, work_dir=tmpdir, stretch_factor=1.0)
-        # stretch_factor=1.5: effective_target=1.5, speed=1.0 → not clamped
-        _, sf_relaxed, _ = _synced_segment_audio(engine, "hola", target_sec=1.0, work_dir=tmpdir, stretch_factor=1.5)
+        # 1.5 s raw / 1.0 s window → ratio 1.5 → clamped to SPEED_MAX 1.25
+        _, sf_a, _ = _synced_segment_audio(engine, "hola", target_sec=1.0, work_dir=tmpdir, stretch_factor=1.0)
+        _, sf_b, _ = _synced_segment_audio(engine, "hola", target_sec=1.0, work_dir=tmpdir, stretch_factor=1.5)
 
-        assert sf_tight == pytest.approx(1.25, abs=0.01)  # hit the clamp
-        assert sf_relaxed == pytest.approx(1.0, abs=0.01)  # exactly fits
-        assert sf_tight > sf_relaxed  # tighter budget → higher speed
+        assert sf_a == pytest.approx(1.25, abs=0.02)
+        assert sf_b == pytest.approx(1.25, abs=0.02)
 
 
 def test_synced_segment_clamp_applied(monkeypatch):
@@ -58,7 +56,7 @@ def test_synced_segment_clamp_applied(monkeypatch):
         audio, sf_val, rd = _synced_segment_audio(engine, "test", target_sec=1.0, work_dir=tmpdir, stretch_factor=1.0)
         assert audio is not None
         assert sf_val <= 1.25 + 1e-9
-        assert sf_val >= 0.85 - 1e-9  # also within lower bound
+        assert sf_val >= 0.75 - 1e-9  # SPEED_MIN in aligned path
 
 
 def test_text_file_to_speech_calls_alignment(tmp_path):

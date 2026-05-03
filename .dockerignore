@@ -9,3 +9,7 @@ docs/
 *.mov
 *.webm
 .env
+
+# API image (context: .) — mounted at runtime or built separately
+frontend/
+pipeline_data/

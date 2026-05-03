@@ -4,7 +4,15 @@ import type {
   TranslateResponse,
   TTSResponse,
   StitchResponse,
+  DiarizeResponse,
 } from "./types";
+
+/** When set (e.g. http://localhost:8080), browser calls FastAPI directly and skips the Next.js rewrite proxy — avoids proxy socket hang-ups on long TTS/stitch. Baked at `next build` via NEXT_PUBLIC_FW_API_ORIGIN. */
+const API_ORIGIN = (process.env.NEXT_PUBLIC_FW_API_ORIGIN ?? "").replace(/\/$/, "");
+
+function apiUrl(path: string): string {
+  return path.startsWith("/") ? `${API_ORIGIN}${path}` : `${API_ORIGIN}/${path}`;
+}
 
 class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -26,7 +34,7 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
 }
 
 export async function downloadVideo(url: string): Promise<DownloadResponse> {
-  return fetchJson<DownloadResponse>("/api/download", {
+  return fetchJson<DownloadResponse>(apiUrl("/api/download"), {
     method: "POST",
     body: JSON.stringify({ url }),
   });
@@ -34,7 +42,7 @@ export async function downloadVideo(url: string): Promise<DownloadResponse> {
 
 export async function transcribeVideo(videoId: string, useYoutubeCaptions = true): Promise<TranscribeResponse> {
   const params = useYoutubeCaptions ? "" : "?use_youtube_captions=false";
-  return fetchJson<TranscribeResponse>(`/api/transcribe/${videoId}${params}`, {
+  return fetchJson<TranscribeResponse>(apiUrl(`/api/transcribe/${videoId}${params}`), {
     method: "POST",
   });
 }
@@ -44,9 +52,15 @@ export async function translateVideo(
   targetLanguage = "es"
 ): Promise<TranslateResponse> {
   return fetchJson<TranslateResponse>(
-    `/api/translate/${videoId}?target_language=${targetLanguage}`,
+    apiUrl(`/api/translate/${videoId}?target_language=${targetLanguage}`),
     { method: "POST" }
   );
+}
+
+export async function diarizeVideo(videoId: string): Promise<DiarizeResponse> {
+  return fetchJson<DiarizeResponse>(apiUrl(`/api/diarize/${videoId}`), {
+    method: "POST",
+  });
 }
 
 export async function synthesizeSpeech(
@@ -55,7 +69,7 @@ export async function synthesizeSpeech(
   alignment: boolean = false
 ): Promise<TTSResponse> {
   return fetchJson<TTSResponse>(
-    `/api/tts/${videoId}?config=${config}&alignment=${alignment}`,
+    apiUrl(`/api/tts/${videoId}?config=${config}&alignment=${alignment}`),
     { method: "POST" }
   );
 }
@@ -65,27 +79,27 @@ export async function stitchVideo(
   config: string
 ): Promise<StitchResponse> {
   return fetchJson<StitchResponse>(
-    `/api/stitch/${videoId}?config=${config}`,
+    apiUrl(`/api/stitch/${videoId}?config=${config}`),
     { method: "POST" }
   );
 }
 
 export function getVideoUrl(videoId: string, config: string): string {
-  return `/api/video/${videoId}?config=${config}`;
+  return apiUrl(`/api/video/${videoId}?config=${config}`);
 }
 
 export function getOriginalVideoUrl(videoId: string): string {
-  return `/api/video/${videoId}/original`;
+  return apiUrl(`/api/video/${videoId}/original`);
 }
 
 export function getAudioUrl(videoId: string, config: string): string {
-  return `/api/audio/${videoId}?config=${config}`;
+  return apiUrl(`/api/audio/${videoId}?config=${config}`);
 }
 
 export function getCaptionsUrl(videoId: string): string {
-  return `/api/captions/${videoId}`;
+  return apiUrl(`/api/captions/${videoId}`);
 }
 
 export function getOriginalCaptionsUrl(videoId: string): string {
-  return `/api/captions/${videoId}/original`;
+  return apiUrl(`/api/captions/${videoId}/original`);
 }

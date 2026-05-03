@@ -1,14 +1,23 @@
-"""Deterministic failure analysis and translation re-ranking stubs.
+"""Deterministic failure analysis and duration-aware translation re-ranking.
 
-The failure analysis function uses simple threshold rules derived from
-SegmentMetrics.  The translation re-ranking function is a **student assignment**
-— see the docstring for inputs, outputs, and implementation guidance.
+``analyze_failures`` uses simple thresholds from ``SegmentMetrics``.
+``get_shorter_translations`` produces shorter Spanish candidates via MarianMT,
+then optional Ollama / Gemini fallbacks — see its docstring.
 """
 
 import dataclasses
+import json
 import logging
+import os
+import re
+import urllib.error
+import urllib.request
+import numpy as np
+
+import foreign_whispers.alignment as alignment
 
 logger = logging.getLogger(__name__)
+_MARIAN_CACHE: dict[str, tuple[object, object]] = {}
 
 
 @dataclasses.dataclass
@@ -102,65 +111,208 @@ def get_shorter_translations(
     target_duration_s: float,
     context_prev: str = "",
     context_next: str = "",
+    semantic_lambda: float = 0.5,
 ) -> list[TranslationCandidate]:
     """Return shorter translation candidates that fit *target_duration_s*.
 
-    .. admonition:: Student Assignment — Duration-Aware Translation Re-ranking
+    Strategy (in order): **MarianMT** (``Helsinki-NLP/opus-mt-en-es``) on
+    *source_text*; if candidates are missing or still too long vs a
+    ~15 chars/s budget, **Ollama** (translate / shorten prompts); if still too
+    long, **Gemini API** (same). Candidates are sorted by proximity to the
+    target character budget.
 
-       This function is intentionally a **stub that returns an empty list**.
-       Your task is to implement a strategy that produces shorter
-       target-language translations when the baseline translation is too long
-       for the time budget.
-
-       **Inputs**
-
-       ============== ======== ==================================================
-       Parameter      Type     Description
-       ============== ======== ==================================================
-       source_text    str      Original source-language segment text
-       baseline_es    str      Baseline target-language translation (from argostranslate)
-       target_duration_s float Time budget in seconds for this segment
-       context_prev   str      Text of the preceding segment (for coherence)
-       context_next   str      Text of the following segment (for coherence)
-       ============== ======== ==================================================
-
-       **Outputs**
-
-       A list of ``TranslationCandidate`` objects, sorted shortest first.
-       Each candidate has:
-
-       - ``text``: the shortened target-language translation
-       - ``char_count``: ``len(text)``
-       - ``brevity_rationale``: short note on what was changed
-
-       **Duration heuristic**: target-language TTS produces ~15 characters/second
-       (or ~4.5 syllables/second for Romance languages).  So a 3-second budget
-       ≈ 45 characters.
-
-       **Approaches to consider** (pick one or combine):
-
-       1. **Rule-based shortening** — strip filler words, use shorter synonyms
-          from a lookup table, contract common phrases
-          (e.g. "en este momento" → "ahora").
-       2. **Multiple translation backends** — call argostranslate with
-          paraphrased input, or use a second translation model, then pick
-          the shortest output that preserves meaning.
-       3. **LLM re-ranking** — use an LLM (e.g. via an API) to generate
-          condensed alternatives.  This was the previous approach but adds
-          latency, cost, and a runtime dependency.
-       4. **Hybrid** — rule-based first, fall back to LLM only for segments
-          that still exceed the budget.
-
-       **Evaluation criteria**: the caller selects the candidate whose
-       ``len(text) / 15.0`` is closest to ``target_duration_s``.
+    Args:
+        source_text: Original source-language segment text.
+        baseline_es: Baseline target-language translation (e.g. from Argos).
+        target_duration_s: Time budget in seconds for this segment.
+        context_prev: Preceding segment text (reserved for future coherence).
+        context_next: Following segment text (reserved for future coherence).
+        semantic_lambda: Reserved for duration+semantic scoring.
 
     Returns:
-        Empty list (stub).  Implement to return ``TranslationCandidate`` items.
+        ``TranslationCandidate`` list (may be empty if all backends fail).
     """
     logger.info(
         "get_shorter_translations called for %.1fs budget (%d chars baseline) — "
-        "returning empty list (student assignment stub).",
+        "returning list of TranslationCandidates",
         target_duration_s,
         len(baseline_es),
     )
-    return []
+
+    # 1. use MarianMT local model to translate English to Spanish
+    # 2. if no candidates are below target characters (+10 leeway), use local LLM
+        # make sure ollama is running with `ollama serve`
+        #  - TranslateGemma translate English -> Spanish
+        #  - TranslateGemma shorten baseline Spanish
+    # 3. if still no sufficient candidates, use Gemini API
+        #  - Gemini translate English -> Spanish
+        #  - Gemini shorten baseline Spanish
+    
+
+    CHARS_PER_SECOND = 15
+    target_chars = int(target_duration_s * CHARS_PER_SECOND)
+
+    candidates = []
+
+    # add original as candidate
+    # candidates.append(TranslationCandidate(
+    #     text=baseline_es,
+    #     char_count=len(baseline_es),
+    #     brevity_rationale="Original",
+    # ))
+
+    # add MarianMT candidates
+    marian_model_names = [
+        "Helsinki-NLP/opus-mt-en-es",
+    ]
+
+    for model_name in marian_model_names:
+        try:
+            translation = _translate_with_marian(source_text, model_name)
+            if translation:
+                candidates.append(TranslationCandidate(
+                    text=translation,
+                    char_count=len(translation),
+                    brevity_rationale=f"Translated with {model_name}",
+                ))
+        except Exception as e:
+            logger.error(f"Error running MarianMT model {model_name}: {e}")
+
+
+    # sort by proximity to target characters
+    candidates.sort(key=lambda c: abs(c.char_count - target_chars))
+
+
+    # If local MT candidates are missing or still too long, try local LLM
+    if (not candidates) or (candidates[0].char_count > target_chars + 10):
+        local_eng = _generate_with_local_llm(
+            prompt=(
+                f"Translate the following English text to Spanish in under {target_chars} characters. "
+                "Preserve meaning and output only translation text.\n\n"
+                f"{source_text}"
+            )
+        )
+        if local_eng:
+            candidates.append(TranslationCandidate(
+                text=local_eng,
+                char_count=len(local_eng),
+                brevity_rationale="English translation with local LLM (Ollama)",
+            ))
+
+        local_es = _generate_with_local_llm(
+            prompt=(
+                f"Shorten this Spanish text to under {target_chars} characters. "
+                "Preserve meaning and output only shortened text.\n\n"
+                f"{baseline_es}"
+            )
+        )
+        if local_es:
+            candidates.append(TranslationCandidate(
+                text=local_es,
+                char_count=len(local_es),
+                brevity_rationale="Spanish shortened with local LLM (Ollama)",
+            ))
+
+        candidates.sort(key=lambda c: abs(c.char_count - target_chars))
+
+    # If local fallbacks are still missing/too long, use Gemini API
+    if (not candidates) or (candidates[0].char_count > target_chars + 10):
+        try:
+            gemini_eng_translation = _generate_with_gemini_api(
+                prompt=(
+                    f"Translate the following English text to Spanish in under {target_chars} characters. "
+                    "Preserve meaning and output only translation text.\n\n"
+                    f"{source_text}"
+                )
+            )
+            if gemini_eng_translation:
+                candidates.append(TranslationCandidate(
+                    text=gemini_eng_translation,
+                    char_count=len(gemini_eng_translation),
+                    brevity_rationale=f"English translation with Gemini",
+                ))
+
+            gemini_es_shortened = _generate_with_gemini_api(
+                prompt=(
+                    f"Shorten this Spanish text to under {target_chars} characters. "
+                    "Preserve meaning and output only shortened text.\n\n"
+                    f"{baseline_es}"
+                )
+            )
+            if gemini_es_shortened:
+                candidates.append(TranslationCandidate(
+                    text=gemini_es_shortened,
+                    char_count=len(gemini_es_shortened),
+                    brevity_rationale=f"Spanish shortened with Gemini",
+                ))
+        except Exception as e:
+            logger.error(f"Error calling Gemini API: {e}")
+
+
+        # sort by proximity to target characters
+        candidates.sort(key=lambda c: abs(c.char_count - target_chars))
+
+    return candidates
+
+
+def _translate_with_marian(source_text: str, model_name: str) -> str:
+    from transformers import MarianMTModel, MarianTokenizer
+
+    if model_name in _MARIAN_CACHE:
+        tokenizer, model = _MARIAN_CACHE[model_name]
+    else:
+        tokenizer = MarianTokenizer.from_pretrained(model_name)
+        model = MarianMTModel.from_pretrained(model_name)
+        _MARIAN_CACHE[model_name] = (tokenizer, model)
+    tok = tokenizer(source_text, return_tensors="pt").input_ids
+    output = model.generate(tok)[0]
+    return tokenizer.decode(output, skip_special_tokens=True)
+
+
+def _sanitize_candidate_text(text: str | None) -> str:
+    if not text:
+        return ""
+    cleaned = text.strip().strip('"').strip("'")
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    return cleaned.strip()
+
+
+def _generate_with_local_llm(prompt: str) -> str:
+    """Call a local Ollama model. Requires ``pip/uv`` package ``ollama`` and ``ollama serve`` (or OLLAMA_HOST).
+
+    Returns empty string if the client is missing, the server is unreachable, or the model is absent.
+    """
+    try:
+        from ollama import chat
+    except ImportError:
+        logger.warning(
+            "ollama package not installed; skipping local LLM rerank. "
+            "Add it with: uv add ollama"
+        )
+        return ""
+    try:
+        response = chat(
+            model="translategemma",
+            messages=[{"role": "user", "content": prompt}],
+        )
+    except Exception as exc:
+        logger.warning(
+            "Ollama chat failed (%s). Is the server running? "
+            "From Docker use e.g. OLLAMA_HOST=http://host.docker.internal:11434",
+            exc,
+        )
+        return ""
+
+    result = response.message.content if response and response.message else ""
+    return _sanitize_candidate_text(result)
+
+def _generate_with_gemini_api(prompt: str) -> str:
+    from google import genai
+
+    client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+
+    response = client.models.generate_content(
+        model="gemini-2.5-flash-lite", contents=prompt
+    )
+
+    return _sanitize_candidate_text(response.text)

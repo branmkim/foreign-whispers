@@ -10,10 +10,13 @@ The module provides:
 - ``decide_action`` — per-segment policy that chooses accept / stretch / shift / retry / fail.
 - ``global_align`` — greedy left-to-right pass that schedules all segments
   on a shared timeline, tracking cumulative drift from gap shifts.
+- ``global_align_dp`` — DP over cumulative drift; may skip an eligible
+  ``GAP_SHIFT`` (``REQUEST_SHORTER`` + penalty) to reduce drift for later segments.
 
 No external dependencies — stdlib only.
 """
 import dataclasses
+import math
 import re
 import unicodedata
 from enum import Enum
@@ -38,7 +41,15 @@ _SYLLABLE_RATE = 4.5  # syllables per second for Romance languages
 
 def _estimate_duration(text: str) -> float:
     """Estimate TTS duration in seconds using a syllable-rate heuristic."""
-    return _count_syllables(text) / _SYLLABLE_RATE
+    n_chars = len(text)
+    n_words = len(text.split())
+
+    # these values are from the linear regression model in notebooks/alignment_integration/tts_data_collection.ipynb
+    N_CHARS_COEFF = 0.06094574
+    N_WORDS_COEFF = 0.06799571
+    INTERCEPT = 0.3466867127865596
+
+    return (N_CHARS_COEFF * n_chars) + (N_WORDS_COEFF * n_words) + INTERCEPT
 
 
 @dataclasses.dataclass
@@ -213,6 +224,191 @@ def compute_segment_metrics(
     return metrics
 
 
+def _available_gap_after(silence_regions: list[dict], end_s: float) -> float:
+    """Seconds of the first silence region that starts near *end_s* (VAD timeline)."""
+    for r in silence_regions:
+        if r.get("label") == "silence" and r["start_s"] >= end_s - 0.1:
+            return float(r["end_s"] - r["start_s"])
+    return 0.0
+
+
+def _align_one(
+    m: SegmentMetrics,
+    cumulative_drift: float,
+    action: AlignAction,
+    gap_shift: float,
+    stretch: float,
+) -> AlignedSegment:
+    sched_start = m.source_start + cumulative_drift
+    sched_end   = sched_start + m.source_duration_s + gap_shift
+    return AlignedSegment(
+        index           = m.index,
+        original_start  = m.source_start,
+        original_end    = m.source_end,
+        scheduled_start = sched_start,
+        scheduled_end   = sched_end,
+        text            = m.translated_text,
+        action          = action,
+        gap_shift_s     = gap_shift,
+        stretch_factor  = stretch,
+    )
+
+
+def _greedy_step(
+    m: SegmentMetrics,
+    gap_avail: float,
+    max_stretch: float,
+) -> tuple[AlignAction, float, float]:
+    """One segment's greedy (``decide_action`` + gap/mild mapping). Returns (action, gap_shift, stretch)."""
+    action = decide_action(m, available_gap_s=gap_avail)
+    gap_shift, stretch = 0.0, 1.0
+    if action == AlignAction.GAP_SHIFT:
+        gap_shift = m.overflow_s
+    elif action == AlignAction.MILD_STRETCH:
+        stretch = min(m.predicted_stretch, max_stretch)
+    return action, gap_shift, stretch
+
+
+def _dp_step_candidates(
+    m: SegmentMetrics,
+    gap_avail: float,
+    max_stretch: float,
+    penalty_skip_gap: float,
+    weight_drift: float,
+    weight_mild: float,
+) -> list[tuple[AlignAction, float, float, float]]:
+    """Return (action, gap_shift, stretch, marginal_cost) options for one segment."""
+    action, gap_shift, stretch = _greedy_step(m, gap_avail, max_stretch)
+    cost = weight_drift * gap_shift + (weight_mild * (stretch - 1.0) if stretch > 1.0 else 0.0)
+    out: list[tuple[AlignAction, float, float, float]] = [(action, gap_shift, stretch, cost)]
+
+    # Optional: skip borrowing silence even though policy would gap-shift — keeps drift for later segments.
+    if action == AlignAction.GAP_SHIFT:
+        out.append(
+            (AlignAction.REQUEST_SHORTER, 0.0, 1.0, float(penalty_skip_gap)),
+        )
+    return out
+
+
+def _dp_better_transition(
+    new_cost: float,
+    new_prev_tick: int,
+    new_j: int,
+    old_cost: float,
+    old_prev_tick: int | None,
+    old_j: int | None,
+    *,
+    cost_eps: float,
+) -> bool:
+    """Prefer strictly lower cost; on cost tie prefer greedy-like (lower choice index, then lower prior drift)."""
+    if new_cost < old_cost - cost_eps:
+        return True
+    if new_cost > old_cost + cost_eps:
+        return False
+    if old_prev_tick is None:
+        return True
+    if new_j != old_j:
+        return new_j < old_j
+    return new_prev_tick < old_prev_tick
+
+
+def global_align_dp(
+    metrics:         list[SegmentMetrics],
+    silence_regions: list[dict],
+    max_stretch:     float = 1.4,
+    *,
+    grid_s:           float = 0.05,
+    penalty_skip_gap: float = 3.0,
+    weight_drift:     float = 1.0,
+    weight_mild:      float = 0.05,
+) -> list[AlignedSegment]:
+    """Global alignment via dynamic programming over cumulative drift.
+
+    At each segment the greedy policy may choose ``GAP_SHIFT``, which adds
+    ``overflow_s`` to cumulative drift for all following segments.  This DP
+    also considers **not** taking that gap (emitting ``REQUEST_SHORTER`` with
+    zero ``gap_shift``) when ``GAP_SHIFT`` would have been valid, trading a
+    fixed penalty for lower drift downstream.
+
+    Drift is tracked on a fixed time grid (``grid_s``) using **integer ticks**
+    so state keys and back-pointers stay stable; ``_align_one`` receives drift
+    in seconds (tick × ``grid_s``), matching the quantized DP semantics.
+    """
+    if not metrics:
+        return []
+
+    if grid_s <= 0.0:
+        raise ValueError("grid_s must be positive")
+
+    max_drift = sum(m.overflow_s for m in metrics) + 1.0
+    max_tick = max(0, int(math.ceil(max_drift / grid_s)))
+    cost_eps = 1e-9
+
+    def tick_to_drift(tick: int) -> float:
+        return tick * grid_s
+
+    def snap_combined_to_tick(combined_s: float) -> int:
+        capped = min(max(combined_s, 0.0), max_drift)
+        t = int(round(capped / grid_s))
+        return max(0, min(t, max_tick))
+
+    # tick after processing prefix -> min total cost
+    cur: dict[int, float] = {0: 0.0}
+    # (segment_index, tick_after) -> (prev_tick, choice_index)
+    back_prev: dict[tuple[int, int], tuple[int, int]] = {}
+    choice_lists: list[list[tuple[AlignAction, float, float, float]]] = []
+
+    for i, m in enumerate(metrics):
+        gap_avail = _available_gap_after(silence_regions, m.source_end)
+        choices = _dp_step_candidates(
+            m, gap_avail, max_stretch, penalty_skip_gap, weight_drift, weight_mild,
+        )
+        choice_lists.append(choices)
+        nxt_cost: dict[int, float] = {}
+        nxt_meta: dict[int, tuple[int, int]] = {}
+        for tick_prev, cost_prev in cur.items():
+            if tick_to_drift(tick_prev) > max_drift + grid_s:
+                continue
+            drift_prev_s = tick_to_drift(tick_prev)
+            for j, (act, g, st, step_cost) in enumerate(choices):
+                new_tick = snap_combined_to_tick(drift_prev_s + g)
+                c_new = cost_prev + step_cost
+                old_c = nxt_cost.get(new_tick, float("inf"))
+                old_meta = nxt_meta.get(new_tick)
+                if old_meta is None:
+                    old_prev, old_j = None, None
+                else:
+                    old_prev, old_j = old_meta
+                if _dp_better_transition(
+                    c_new, tick_prev, j, old_c, old_prev, old_j, cost_eps=cost_eps,
+                ):
+                    nxt_cost[new_tick] = c_new
+                    nxt_meta[new_tick] = (tick_prev, j)
+                    back_prev[(i, new_tick)] = (tick_prev, j)
+
+        cur = nxt_cost
+
+    if not cur:
+        return global_align(metrics, silence_regions, max_stretch)
+
+    best_tick = min(cur, key=lambda t: (cur[t], t))
+
+    aligned_rev: list[AlignedSegment] = []
+    tick_after = best_tick
+    for i in range(len(metrics) - 1, -1, -1):
+        key = (i, tick_after)
+        if key not in back_prev:
+            return global_align(metrics, silence_regions, max_stretch)
+        tick_prev, j = back_prev[key]
+        act, g, st, _ = choice_lists[i][j]
+        d_prev = tick_to_drift(tick_prev)
+        aligned_rev.append(_align_one(metrics[i], d_prev, act, g, st))
+        tick_after = tick_prev
+
+    aligned_rev.reverse()
+    return aligned_rev
+
+
 def global_align(
     metrics:         list[SegmentMetrics],
     silence_regions: list[dict],
@@ -249,8 +445,8 @@ def global_align(
       segment 9 has a large silence gap, it will not save that gap for
       segment 10.
     - **No backtracking** — once a decision is made, it is final.
-    - A dynamic-programming or constraint-solver approach would produce
-      better schedules, but this is the baseline to start from.
+    - See ``global_align_dp`` for a small DP that can skip eligible gap-shifts
+      to reduce downstream drift.
 
     Args:
         metrics: Per-segment timing metrics from ``compute_segment_metrics``.
@@ -261,40 +457,13 @@ def global_align(
     Returns:
         One ``AlignedSegment`` per input metric, in order.
     """
-    def _silence_after(end_s: float) -> float:
-        for r in silence_regions:
-            if r.get("label") == "silence" and r["start_s"] >= end_s - 0.1:
-                return r["end_s"] - r["start_s"]
-        return 0.0
-
     aligned, cumulative_drift = [], 0.0
 
     for m in metrics:
-        action    = decide_action(m, available_gap_s=_silence_after(m.source_end))
-        gap_shift = 0.0
-        stretch   = 1.0
+        gap_avail = _available_gap_after(silence_regions, m.source_end)
+        action, gap_shift, stretch = _greedy_step(m, gap_avail, max_stretch)
 
-        if action == AlignAction.GAP_SHIFT:
-            gap_shift = m.overflow_s
-        elif action == AlignAction.MILD_STRETCH:
-            stretch = min(m.predicted_stretch, max_stretch)
-        # ACCEPT, REQUEST_SHORTER, FAIL → stretch stays at 1.0
-
-        sched_start = m.source_start + cumulative_drift
-        sched_end   = sched_start + m.source_duration_s + gap_shift
-
-        aligned.append(AlignedSegment(
-            index           = m.index,
-            original_start  = m.source_start,
-            original_end    = m.source_end,
-            scheduled_start = sched_start,
-            scheduled_end   = sched_end,
-            text            = m.translated_text,
-            action          = action,
-            gap_shift_s     = gap_shift,
-            stretch_factor  = stretch,
-        ))
-
+        aligned.append(_align_one(m, cumulative_drift, action, gap_shift, stretch))
         cumulative_drift += gap_shift
 
     return aligned

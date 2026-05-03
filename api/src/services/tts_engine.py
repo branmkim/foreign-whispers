@@ -5,6 +5,8 @@ import pathlib
 import json
 import glob
 import tempfile
+import shutil
+import subprocess
 
 import requests
 import librosa
@@ -13,7 +15,7 @@ import pyrubberband
 from pydub import AudioSegment
 
 # ── Chatterbox API configuration ─────────────────────────────────────
-CHATTERBOX_API_URL = os.getenv("CHATTERBOX_API_URL", "http://localhost:8020")
+CHATTERBOX_API_URL = os.getenv("CHATTERBOX_API_URL", "https://fmi344h0c7ew5n-5123.proxy.runpod.net/")
 # Path to the default speaker reference WAV, relative to pipeline_data/speakers/
 CHATTERBOX_SPEAKER_WAV = os.getenv("CHATTERBOX_SPEAKER_WAV", "")
 
@@ -21,14 +23,25 @@ CHATTERBOX_SPEAKER_WAV = os.getenv("CHATTERBOX_SPEAKER_WAV", "")
 # Default is "on" (new clamped path). Useful for A/B comparisons.
 _ALIGNMENT_ENABLED = os.getenv("FW_ALIGNMENT", "on").lower() != "off"
 
-SPEED_MIN = 0.75
-SPEED_MAX = 1.25
-# When TTS audio is less than this fraction of the target window, skip
-# time-stretching entirely — play at natural speed and pad with silence.
-# Prevents comically slow speech in windows with long narrator pauses.
-_STRETCH_SKIP_RATIO = 0.5
+logger = _logging.getLogger(__name__)
+
+SPEED_MIN = 0.5
+SPEED_MAX = 1.75
+# When aligned mode is on and raw TTS is shorter than this fraction of the
+# target window, skip rubberband (natural rate + silence pad). Default 0.2
+# avoids skipping for typical Chatterbox clips (~40–60% of window), which made
+# stretch inaudible. Override with FW_TTS_STRETCH_SKIP_RATIO (0–0.95).
+_STRETCH_SKIP_DEFAULT = 0.2
 _SPEED_MIN_LEGACY = 0.1
 _SPEED_MAX_LEGACY = 10.0
+
+
+def _stretch_skip_ratio() -> float:
+    raw = os.getenv("FW_TTS_STRETCH_SKIP_RATIO", str(_STRETCH_SKIP_DEFAULT))
+    try:
+        return max(0.0, min(0.95, float(raw)))
+    except ValueError:
+        return _STRETCH_SKIP_DEFAULT
 
 
 class ChatterboxClient:
@@ -93,9 +106,7 @@ class ChatterboxClient:
             # Try as absolute path
             wav_path = pathlib.Path(speaker_wav)
         if not wav_path.exists():
-            _logging.getLogger(__name__).warning(
-                "[tts] Speaker WAV %s not found, falling back to default voice", speaker_wav
-            )
+            print(f"[tts] Speaker WAV {speaker_wav} not found, falling back to default voice")
             return self._synthesize_default(text)
 
         with open(wav_path, "rb") as f:
@@ -125,6 +136,28 @@ class ChatterboxClient:
         return chunks if chunks else [text]
 
 
+# Coqui monkey-patch: apply once so failed init retries do not wrap torch.load repeatedly.
+_coqui_torch_load_real = None
+
+
+def _ensure_torch_load_weights_only_off() -> None:
+    """PyTorch 2.6+ defaults weights_only=True; Coqui checkpoints need False. Patch once."""
+    global _coqui_torch_load_real
+    import functools
+    import torch
+
+    if _coqui_torch_load_real is not None:
+        return
+    _coqui_torch_load_real = torch.load
+
+    @functools.wraps(_coqui_torch_load_real)
+    def _patched_load(*args, **kwargs):
+        kwargs.setdefault("weights_only", False)
+        return _coqui_torch_load_real(*args, **kwargs)
+
+    torch.load = _patched_load
+
+
 def _make_tts_engine():
     """Create TTS engine: Chatterbox API client if server is reachable, else local Coqui.
 
@@ -141,18 +174,10 @@ def _make_tts_engine():
         print(f"[tts] Chatterbox not available ({exc}), falling back to local Coqui")
 
     # Fallback: local Coqui TTS (for dev/test without Docker)
-    import functools
     import torch
     from TTS.api import TTS as CoquiTTS
-    # Coqui TTS checkpoints contain classes (RAdam, defaultdict, etc.) that
-    # PyTorch 2.6+ rejects with weights_only=True.  Monkey-patch torch.load
-    # to default to weights_only=False for these trusted model files.
-    _original_torch_load = torch.load
-    @functools.wraps(_original_torch_load)
-    def _patched_load(*args, **kwargs):
-        kwargs.setdefault("weights_only", False)
-        return _original_torch_load(*args, **kwargs)
-    torch.load = _patched_load
+
+    _ensure_torch_load_weights_only_off()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[tts] Using local Coqui TTS on {device}")
     return CoquiTTS(model_name="tts_models/es/mai/tacotron2-DDC", progress_bar=False).to(device)
@@ -196,12 +221,19 @@ def files_from_dir(dir_path) -> list:
     return es_files
 
 
-def _synthesize_raw(tts_engine, text: str, wav_path: str) -> bytes | None:
+def _synthesize_raw(tts_engine, text: str, wav_path: str, speaker_wav: str | None = None) -> bytes | None:
     """GPU-bound: call TTS engine and return raw WAV bytes, or None on failure."""
     if not text or not text.strip():
         return None
     try:
-        tts_engine.tts_to_file(text=text, file_path=wav_path)
+        if speaker_wav:
+            try:
+                tts_engine.tts_to_file(text=text, file_path=wav_path, speaker_wav=speaker_wav)
+            except TypeError:
+                # Local fallback engines may not accept speaker_wav kwargs.
+                tts_engine.tts_to_file(text=text, file_path=wav_path)
+        else:
+            tts_engine.tts_to_file(text=text, file_path=wav_path)
         return pathlib.Path(wav_path).read_bytes()
     except Exception as exc:
         print(f"[tts] TTS failed for segment ({exc}), using silence")
@@ -238,13 +270,15 @@ def _postprocess_segment(raw_wav_bytes: bytes | None, target_sec: float,
     if not alignment_enabled:
         speed_factor = duration_ratio
         speed_factor = max(_SPEED_MIN_LEGACY, min(_SPEED_MAX_LEGACY, speed_factor))
-    elif duration_ratio < _STRETCH_SKIP_RATIO:
-        # TTS is dramatically shorter than target — narrator was pausing.
-        # Play at natural speed; silence padding below handles the gap.
+    elif duration_ratio < _stretch_skip_ratio():
+        # Raw TTS is very short vs the window — likely a long pause in the source.
+        # Natural rate + silence pad (see FW_TTS_STRETCH_SKIP_RATIO).
         speed_factor = 1.0
     else:
-        effective_target = target_sec * max(stretch_factor, 0.1)
-        speed_factor = raw_duration / effective_target
+        # Fit raw audio into *target_sec* (same goal as baseline, tighter clamps).
+        # ``stretch_factor`` from global_align is policy metadata; using it in the
+        # old ``effective_target`` denominator broke mild-overflow tempo direction.
+        speed_factor = duration_ratio
         speed_factor = max(SPEED_MIN, min(SPEED_MAX, speed_factor))
 
     if abs(speed_factor - 1.0) > 0.01:
@@ -299,18 +333,87 @@ def _load_en_transcript(es_source_path: str) -> dict:
         return json.load(f)
 
 
-def _build_alignment(en_transcript: dict, es_transcript: dict) -> tuple:
-    """Run global_align and return (metrics_list, {segment_index: AlignedSegment}).
+def _vad_silence_regions_for_translation(translation_json_path: str) -> list[dict]:
+    """Extract 16 kHz mono WAV from the matching downloaded video and run Silero VAD.
+
+    Returns ``[{start_s, end_s, label}, ...]`` (speech/silence) for
+    :func:`foreign_whispers.alignment.global_align_dp`, or ``[]`` if the video
+    is missing, ffmpeg fails, or silero-vad is unavailable.
+    """
+    from foreign_whispers.vad import detect_speech_activity
+
+    es_path = pathlib.Path(translation_json_path)
+    data_dir = es_path.parent.parent.parent
+    video = data_dir / "videos" / f"{es_path.stem}.mp4"
+    if not video.is_file():
+        logger.info("[tts] VAD: no video at %s — silence_regions empty", video)
+        return []
+
+    tmp_dir = pathlib.Path(tempfile.mkdtemp(prefix="fw_vad_"))
+    tmp_wav = tmp_dir / "vad_input.wav"
+    try:
+        subprocess.run(
+            [
+                "ffmpeg", "-y", "-nostdin", "-i", str(video),
+                "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1",
+                str(tmp_wav),
+            ],
+            capture_output=True,
+            check=True,
+            timeout=600,
+        )
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError) as exc:
+        logger.warning("[tts] VAD: ffmpeg extract failed (%s) — skipping VAD", exc)
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+        return []
+
+    try:
+        regions = detect_speech_activity(str(tmp_wav))
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+    if regions:
+        logger.info("[tts] VAD: %d regions for %s", len(regions), es_path.stem)
+    else:
+        logger.info("[tts] VAD: no regions (silero missing or no speech) for %s", es_path.stem)
+    return regions
+
+
+def _build_alignment(
+    en_transcript: dict,
+    es_transcript: dict,
+    *,
+    translation_source_path: str,
+) -> tuple:
+    """Run ``global_align_dp`` (default) or greedy ``global_align`` with VAD silence regions.
+
+    Set ``FW_ALIGN_GREEDY=1`` to use the greedy baseline. Set ``FW_TTS_VAD=off``
+    to skip ffmpeg + Silero VAD (empty silence list).
 
     Returns ([], {}) if the alignment library is unavailable or fails.
     """
     try:
-        from foreign_whispers.alignment import compute_segment_metrics, global_align
+        from foreign_whispers.alignment import (
+            compute_segment_metrics,
+            global_align,
+            global_align_dp,
+        )
     except ImportError:
         return [], {}
     try:
         metrics = compute_segment_metrics(en_transcript, es_transcript)
-        aligned = global_align(metrics, silence_regions=[])
+        silence: list[dict] = []
+        if os.getenv("FW_TTS_VAD", "on").lower() not in ("0", "false", "off", "no"):
+            silence = _vad_silence_regions_for_translation(translation_source_path)
+
+        use_greedy = os.getenv("FW_ALIGN_GREEDY", "").lower() in ("1", "true", "yes", "on")
+        if use_greedy:
+            aligned = global_align(metrics, silence_regions=silence)
+            logger.info("[tts] alignment: greedy global_align (%d silence regions)", len(silence))
+        else:
+            aligned = global_align_dp(metrics, silence_regions=silence)
+            logger.info("[tts] alignment: global_align_dp (%d silence regions)", len(silence))
+
         return metrics, {seg.index: seg for seg in aligned}
     except Exception as exc:
         print(f"[tts] alignment failed ({exc}), proceeding without alignment")
@@ -320,7 +423,7 @@ def _build_alignment(en_transcript: dict, es_transcript: dict) -> tuple:
 def _shorten_segment_text(en_text: str, es_text: str, target_sec: float) -> str:
     """Try to shorten a Spanish translation to fit *target_sec*.
 
-    Delegates to ``get_shorter_translations()`` (student assignment stub).
+    Delegates to ``foreign_whispers.reranking.get_shorter_translations``.
     Returns the original *es_text* if no shorter candidate is available.
     """
     try:
@@ -395,12 +498,12 @@ def _compute_speech_offset(source_path: str) -> float:
     return yt_start - whisper_start
 
 
-def text_file_to_speech(source_path, output_path, tts_engine=None, *, alignment=None):
+def text_file_to_speech(source_path, output_path, tts_engine=None, *, alignment=None, speaker_voice_map: dict[str, str] | None = None):
     """Read translated JSON with segment timestamps and produce a time-aligned WAV.
 
     Each segment is individually synthesized and time-stretched to match its
-    original timestamp window.  Gaps between segments are filled with silence.
-    Applies the YouTube caption timing offset so TTS audio starts when speech
+    transcript window.  Gaps between segments are filled with silence (sequential
+    concat).  Applies the YouTube caption timing offset so TTS audio starts when speech
     actually begins in the original video.
 
     *tts_engine* overrides the module-level ``tts`` instance (used by the
@@ -434,7 +537,11 @@ def text_file_to_speech(source_path, output_path, tts_engine=None, *, alignment=
         es_transcript = json.load(f)
     en_transcript = _load_en_transcript(source_path)
     if use_alignment:
-        _metrics_list, align_map = _build_alignment(en_transcript, es_transcript)
+        _metrics_list, align_map = _build_alignment(
+            en_transcript,
+            es_transcript,
+            translation_source_path=source_path,
+        )
     else:
         _metrics_list, align_map = [], {}
     _aligned_list = list(align_map.values())
@@ -464,6 +571,9 @@ def text_file_to_speech(source_path, output_path, tts_engine=None, *, alignment=
             "target_sec": target_sec,
             "stretch_factor": stretch_factor,
             "aligned_seg": aligned_seg,
+            "speaker_wav": (speaker_voice_map or {}).get(
+                (seg.get("speaker") or "SPEAKER_00"),
+            ),
         })
 
     # ── Phase 1: GPU synthesis (concurrent) ───────────────────────────
@@ -471,17 +581,23 @@ def text_file_to_speech(source_path, output_path, tts_engine=None, *, alignment=
     # previous results are being downloaded / decoded.
     from concurrent.futures import ThreadPoolExecutor, as_completed
     _TTS_WORKERS = int(os.getenv("FW_TTS_WORKERS", "3"))
+    # In-process Coqui (PyTorch) is not thread-safe; parallel tts_to_file calls
+    # race the model and fail with e.g. "stack expects each tensor to be equal size".
+    # Chatterbox is HTTP-only, so it can use multiple workers.
+    # _pool_workers = _TTS_WORKERS if isinstance(engine, ChatterboxClient) else 1
+    _pool_workers = 1
 
     raw_wav_map: dict[int, bytes | None] = {}
 
     with tempfile.TemporaryDirectory() as synth_dir:
-        def _do_synth(idx: int, text: str) -> tuple[int, bytes | None]:
+        def _do_synth(idx: int, text: str, speaker_wav: str | None) -> tuple[int, bytes | None]:
             wav_path = str(pathlib.Path(synth_dir) / f"seg_{idx}.wav")
-            return idx, _synthesize_raw(engine, text, wav_path)
+            print("segment", idx, "speaker", speaker_wav)
+            return idx, _synthesize_raw(engine, text, wav_path, speaker_wav=speaker_wav)
 
-        with ThreadPoolExecutor(max_workers=_TTS_WORKERS) as pool:
+        with ThreadPoolExecutor(max_workers=_pool_workers) as pool:
             futures = {
-                pool.submit(_do_synth, m["index"], m["text"]): m["index"]
+                pool.submit(_do_synth, m["index"], m["text"], m["speaker_wav"]): m["index"]
                 for m in seg_metas
             }
             for fut in as_completed(futures):

@@ -1,6 +1,5 @@
 """POST /api/diarize/{video_id} — speaker diarization (issue fw-lua)."""
 
-import asyncio
 import json
 import subprocess
 
@@ -15,6 +14,20 @@ from foreign_whispers.diarization import assign_speakers
 router = APIRouter(prefix="/api")
 
 _alignment_service = AlignmentService(settings=settings)
+
+
+def _merge_diarization_into_transcript(title: str, diar_data: dict) -> None:
+    """Write speaker labels onto whisper segments when a transcript exists."""
+    transcript_path = settings.transcriptions_dir / f"{title}.json"
+    if not transcript_path.exists():
+        return
+    transcript = json.loads(transcript_path.read_text())
+    labeled = assign_speakers(
+        transcript.get("segments", []),
+        diar_data.get("segments", []),
+    )
+    transcript["segments"] = labeled
+    transcript_path.write_text(json.dumps(transcript))
 
 
 @router.post("/diarize/{video_id}", response_model=DiarizeResponse)
@@ -34,20 +47,10 @@ async def diarize_endpoint(video_id: str):
     diar_dir.mkdir(parents=True, exist_ok=True)
     diar_path = diar_dir / f"{title}.json"
 
-    # Return cached result
+    # Cached diarization: always re-merge so transcript stays aligned if it was regenerated.
     if diar_path.exists():
         data = json.loads(diar_path.read_text())
-
-        transcript_path = settings.transcriptions_dir / f"{title}.json"
-        if transcript_path.exists():
-            transcript = json.loads(transcript_path.read_text())
-            labeled_segments = assign_speakers(
-                transcript.get("segments", []),
-                data.get("segments", []),
-            )
-            transcript["segments"] = labeled_segments
-            transcript_path.write_text(json.dumps(transcript))
-
+        _merge_diarization_into_transcript(title, data)
 
         return DiarizeResponse(
             video_id=video_id,
@@ -71,6 +74,7 @@ async def diarize_endpoint(video_id: str):
     # Step 4: Cache result
     result = {"speakers": speakers, "segments": diar_segments}
     diar_path.write_text(json.dumps(result))
+    _merge_diarization_into_transcript(title, result)
 
     # Step 5: Return DiarizeResponse
     return DiarizeResponse(video_id=video_id, speakers=speakers, segments=diar_segments)

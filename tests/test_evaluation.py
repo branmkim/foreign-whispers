@@ -1,6 +1,6 @@
 # tests/test_evaluation.py
 from foreign_whispers.alignment import compute_segment_metrics, global_align
-from foreign_whispers.evaluation import clip_evaluation_report
+from foreign_whispers.evaluation import clip_evaluation_report, dubbing_scorecard
 
 
 def _make_transcripts(src_dur=3.0, tgt_chars=30):
@@ -47,3 +47,42 @@ def test_report_empty_inputs():
     report = clip_evaluation_report([], [])
     assert report["mean_abs_duration_error_s"] == 0.0
     assert report["n_gap_shifts"] == 0
+
+
+def test_scorecard_timing_keys_and_range():
+    en, es = _make_transcripts()
+    metrics = compute_segment_metrics(en, es)
+    aligned = global_align(metrics, silence_regions=[])
+    report = clip_evaluation_report(metrics, aligned)
+    card = dubbing_scorecard(metrics, aligned, report)
+    assert "timing" in card and "timing_detail" in card
+    assert 0.0 <= card["timing"] <= 1.0
+    td = card["timing_detail"]
+    for k in (
+        "duration_error_score",
+        "severe_stretch_score",
+        "drift_score",
+        "mean_abs_duration_error_s",
+        "pct_severe_stretch",
+        "total_cumulative_drift_s",
+    ):
+        assert k in td
+    assert 0.0 <= td["duration_error_score"] <= 1.0
+
+
+def test_scorecard_stale_align_report_does_not_override_timing():
+    """Recomputed clip report wins over contradictory align_report."""
+    en, es = _make_transcripts()
+    metrics = compute_segment_metrics(en, es)
+    aligned = global_align(metrics, silence_regions=[])
+    real = clip_evaluation_report(metrics, aligned)
+    fake = {**real, "mean_abs_duration_error_s": 99.0, "pct_severe_stretch": 100.0}
+    card = dubbing_scorecard(metrics, aligned, fake)
+    assert card["timing_detail"]["mean_abs_duration_error_s"] == real["mean_abs_duration_error_s"]
+    assert card["timing_detail"]["pct_severe_stretch"] == real["pct_severe_stretch"]
+
+
+def test_scorecard_empty_clip():
+    card = dubbing_scorecard([], [], {})
+    assert card["timing"] == 1.0
+    assert card["timing_detail"]["duration_error_score"] == 1.0

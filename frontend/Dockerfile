@@ -12,6 +12,9 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ARG API_URL=http://localhost:8080
 ENV API_URL=${API_URL}
+# Browser → FastAPI directly (same host) so long TTS is not cut off by the Next rewrite proxy.
+ARG NEXT_PUBLIC_FW_API_ORIGIN=
+ENV NEXT_PUBLIC_FW_API_ORIGIN=${NEXT_PUBLIC_FW_API_ORIGIN}
 RUN pnpm build
 
 FROM base AS runner

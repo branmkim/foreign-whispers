@@ -62,11 +62,19 @@ services:
         USER_UID: "${UID:-1000}"
         USER_GID: "${GID:-1000}"
     restart: unless-stopped
-    network_mode: host
-    command: ["uv", "run", "uvicorn", "api.src.main:app", "--host", "0.0.0.0", "--port", "8080"]
+    # network_mode: host
+    ports: ["8080:8080"]
+    command: ["uv", "run", "uvicorn", "api.src.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+    # Load project-root .env into the container (Compose does not do this by default).
+    env_file:
+      - .env
     environment:
-      - CHATTERBOX_API_URL=http://localhost:8020
+      # So TTS progress/success print() lines show up in docker logs without block-buffering delays.
+      - PYTHONUNBUFFERED=1
+      - CHATTERBOX_API_URL=https://fmi344h0c7ew5n-5123.proxy.runpod.net/
       - FW_WHISPER_MODEL=base
+      # Rerank (Ollama): reach host Ollama from the API container (override in .env).
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
     volumes:
       - ./pipeline_data:/app/pipeline_data
       - ./foreign_whispers:/app/foreign_whispers
@@ -80,10 +88,15 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        API_URL: http://api:8080
+        # Client-side fetch hits :8080 so TTS/stitch are not limited by Next’s proxy to api:8080.
+        NEXT_PUBLIC_FW_API_ORIGIN: http://localhost:8080
     restart: unless-stopped
-    network_mode: host
+    # network_mode: host
+    ports: ["8501:8501"]
     environment:
-      - API_URL=http://localhost:8080
+      - API_URL=http://api:8080
       - HOSTNAME=0.0.0.0
       - PORT=8501
     healthcheck:

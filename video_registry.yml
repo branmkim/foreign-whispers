@@ -30,3 +30,9 @@ videos:
     url: https://www.youtube.com/watch?v=IiBKsv-D64M
     source_language: en
     target_language: es
+
+  - id: 9Ns-_uvkL44
+    title: "Short test clip"
+    url: https://www.youtube.com/watch?v=9Ns-_uvkL44
+    source_language: en
+    target_language: es

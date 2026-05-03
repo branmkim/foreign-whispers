@@ -15,6 +15,7 @@ import {
   LanguagesIcon,
   Volume2Icon,
   ScissorsIcon,
+  UsersIcon
 } from "lucide-react";
 import { useElapsed } from "@/hooks/use-elapsed";
 import type { PipelineStage, PipelineState, StageState, StudioSettings } from "@/lib/types";
@@ -28,6 +29,7 @@ const STAGES: {
 }[] = [
   { key: "download", label: "Download", icon: DownloadIcon, description: "Fetch video + captions from YouTube" },
   { key: "transcribe", label: "Transcribe", icon: MicIcon, description: "Speech-to-text via Whisper" },
+  { key: "diarize", label: "Diarize", icon: UsersIcon, description: "Speaker diarization via pyannote" },
   { key: "translate", label: "Translate", icon: LanguagesIcon, description: "English to Spanish translation" },
   { key: "tts", label: "TTS", icon: Volume2Icon, description: "Text-to-speech synthesis" },
   { key: "stitch", label: "Stitch", icon: ScissorsIcon, description: "Combine audio + video + subtitles" },
@@ -67,11 +69,12 @@ function StageRow({
   label: string;
   icon: React.ElementType;
   description: string;
-  stage: StageState;
+  stage?: StageState;
   config: string;
 }) {
-  const elapsed = useElapsed(stage.status === "active" ? stage.started_at : undefined);
-  const duration = stage.status === "active" ? elapsed : stage.duration_ms;
+  const stageState: StageState = stage ?? { status: "pending" };
+  const elapsed = useElapsed(stageState.status === "active" ? stageState.started_at : undefined);
+  const duration = stageState.status === "active" ? elapsed : stageState.duration_ms;
 
   return (
     <TableRow key={stageKey}>
@@ -82,7 +85,7 @@ function StageRow({
         </div>
       </TableCell>
       <TableCell className="text-muted-foreground">{description}</TableCell>
-      <TableCell>{statusBadge(stage.status)}</TableCell>
+      <TableCell>{statusBadge(stageState.status)}</TableCell>
       <TableCell className="text-right tabular-nums">{formatDuration(duration)}</TableCell>
       <TableCell className="text-muted-foreground text-xs">{config}</TableCell>
     </TableRow>

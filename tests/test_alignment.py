@@ -6,6 +6,7 @@ from foreign_whispers.alignment import (
     compute_segment_metrics,
     decide_action,
     global_align,
+    global_align_dp,
 )
 
 
@@ -141,11 +142,47 @@ def test_global_align_gap_shift_accumulates_drift():
         {"start": 2.0, "end": 4.0, "text": "x"},
     ]}
     es = {"segments": [
-        {"start": 0.0, "end": 1.0, "text": "ba" * 7},   # 7 syl/4.5 ≈ 1.56s in 1.0s → stretch 1.56 → GAP_SHIFT
-        {"start": 2.0, "end": 4.0, "text": "ba" * 4},   # 4 syl/4.5 ≈ 0.89s in 2.0s → ACCEPT
+        # ~1.51s predicted in 1.0s window → stretch in (1.4, 1.8] → GAP_SHIFT when silence allows
+        {"start": 0.0, "end": 1.0, "text": "ba" * 9},
+        {"start": 2.0, "end": 4.0, "text": "ba" * 4},
     ]}
     silence = [{"start_s": 1.0, "end_s": 3.0, "label": "silence"}]
     metrics = compute_segment_metrics(en, es)
     aligned = global_align(metrics, silence_regions=silence)
     assert aligned[0].action == AlignAction.GAP_SHIFT
     assert aligned[1].scheduled_start > aligned[1].original_start
+
+
+def test_global_align_dp_matches_greedy_when_skip_expensive():
+    en = {"segments": [
+        {"start": 0.0, "end": 1.0, "text": "x"},
+        {"start": 2.0, "end": 4.0, "text": "x"},
+    ]}
+    es = {"segments": [
+        {"start": 0.0, "end": 1.0, "text": "ba" * 9},
+        {"start": 2.0, "end": 4.0, "text": "ba" * 4},
+    ]}
+    silence = [{"start_s": 1.0, "end_s": 3.0, "label": "silence"}]
+    metrics = compute_segment_metrics(en, es)
+    greedy = global_align(metrics, silence)
+    dp = global_align_dp(metrics, silence, penalty_skip_gap=100.0)
+    assert [a.action for a in dp] == [a.action for a in greedy]
+    assert [a.gap_shift_s for a in dp] == [a.gap_shift_s for a in greedy]
+
+
+def test_global_align_dp_skips_gap_when_skip_is_free():
+    en = {"segments": [
+        {"start": 0.0, "end": 1.0, "text": "x"},
+        {"start": 2.0, "end": 4.0, "text": "x"},
+    ]}
+    es = {"segments": [
+        {"start": 0.0, "end": 1.0, "text": "ba" * 9},
+        {"start": 2.0, "end": 4.0, "text": "ba" * 4},
+    ]}
+    silence = [{"start_s": 1.0, "end_s": 3.0, "label": "silence"}]
+    metrics = compute_segment_metrics(en, es)
+    dp = global_align_dp(metrics, silence, penalty_skip_gap=0.0)
+    assert dp[0].action == AlignAction.REQUEST_SHORTER
+    assert dp[0].gap_shift_s == 0.0
+    greedy = global_align(metrics, silence)
+    assert dp[1].scheduled_start < greedy[1].scheduled_start

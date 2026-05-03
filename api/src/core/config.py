@@ -1,5 +1,6 @@
 """Application settings loaded from environment variables."""
 
+import os
 from pathlib import Path
 
 from pydantic import model_validator
@@ -70,6 +71,10 @@ class Settings(BaseSettings):
     def dubbed_captions_dir(self) -> Path:
         return self.data_dir / "dubbed_captions"
 
+    @property
+    def speakers_dir(self) -> Path:
+        return self.base_dir / "pipeline_data" / "speakers"
+
     # S3 storage
     s3_bucket: str = ""
     s3_endpoint_url: str = ""
@@ -87,8 +92,13 @@ class Settings(BaseSettings):
     vllm_base_url: str = ""
 
     # External service URLs
-    chatterbox_api_url: str = "http://localhost:8020"
+    chatterbox_api_url: str = "https://fmi344h0c7ew5n-5123.proxy.runpod.net/"
     whisper_api_url: str = "http://localhost:8000"
+
+    # Ollama HTTP API (translation rerank in foreign_whispers.reranking). The official
+    # ``ollama`` Python client reads ``OLLAMA_HOST``; set that in Docker or set this
+    # field via ``FW_OLLAMA_HOST`` when ``OLLAMA_HOST`` is unset.
+    ollama_host: str = ""
 
     # HuggingFace token for pyannote speaker diarization model
     hf_token: str = ""
@@ -103,6 +113,9 @@ class Settings(BaseSettings):
         """If database_url is empty but postgres_dsn was set, copy it over."""
         if not self.database_url and self.postgres_dsn:
             self.database_url = self.postgres_dsn
+        # Ollama client library reads OLLAMA_HOST only; mirror FW_OLLAMA_HOST when needed.
+        if not os.environ.get("OLLAMA_HOST") and self.ollama_host.strip():
+            os.environ["OLLAMA_HOST"] = self.ollama_host.strip()
         return self
 
 

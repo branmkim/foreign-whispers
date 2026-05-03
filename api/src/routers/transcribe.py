@@ -10,12 +10,18 @@ from api.src.core.dependencies import resolve_title
 from api.src.main import get_whisper_model
 from api.src.schemas.transcribe import TranscribeResponse, TranscribeSegment
 from api.src.services.transcription_service import TranscriptionService
+from foreign_whispers.segment_merge import transcript_with_exclusive_timeline
 
 router = APIRouter(prefix="/api")
 
 
 def _youtube_captions_to_segments(caption_path: pathlib.Path) -> dict:
-    """Convert YouTube line-delimited JSON captions to Whisper-compatible result dict."""
+    """Convert YouTube line-delimited JSON captions to Whisper-compatible result dict.
+
+    YouTube captions use overlapping rolling windows. Each line keeps its own
+    ``text``; times are tiled with ``exclusive_segment_timeline`` so TTS does
+    not double-count wall-clock.
+    """
     segments = []
     full_text_parts = []
     for i, line in enumerate(caption_path.read_text().splitlines()):
@@ -35,11 +41,13 @@ def _youtube_captions_to_segments(caption_path: pathlib.Path) -> dict:
             "text": text,
         })
         full_text_parts.append(text)
-    return {
-        "language": "en",
-        "text": " ".join(full_text_parts),
-        "segments": segments,
-    }
+    return transcript_with_exclusive_timeline(
+        {
+            "language": "en",
+            "text": " ".join(full_text_parts),
+            "segments": segments,
+        }
+    )
 
 
 @router.post("/transcribe/{video_id}", response_model=TranscribeResponse)
@@ -57,6 +65,7 @@ async def transcribe_endpoint(
     transcriptions_dir = settings.transcriptions_dir
     transcriptions_dir.mkdir(parents=True, exist_ok=True)
 
+    print(f"Video ID: {video_id}")
     title = resolve_title(video_id)
     if title is None:
         raise HTTPException(status_code=404, detail=f"Video {video_id} not found in index")
@@ -66,11 +75,14 @@ async def transcribe_endpoint(
     # Return cached Whisper result if it exists and we're not forcing re-run
     if transcript_path.exists() and use_youtube_captions:
         data = json.loads(transcript_path.read_text())
+        canon = transcript_with_exclusive_timeline(data)
+        # Rewrite so translate/TTS see tiled caption windows (idempotent).
+        transcript_path.write_text(json.dumps(canon))
         return TranscribeResponse(
             video_id=video_id,
-            language=data.get("language", "en"),
-            text=data.get("text", ""),
-            segments=data.get("segments", []),
+            language=canon.get("language", "en"),
+            text=canon.get("text", ""),
+            segments=canon.get("segments", []),
             skipped=True,
         )
 
@@ -95,6 +107,7 @@ async def transcribe_endpoint(
     )
     video_path = videos_dir / f"{title}.mp4"
     result = svc.transcribe(str(video_path))
+    result = transcript_with_exclusive_timeline(result)
 
     # Persist result
     transcript_path.write_text(json.dumps(result))

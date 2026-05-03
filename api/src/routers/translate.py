@@ -7,11 +7,24 @@ from fastapi import APIRouter, HTTPException, Query
 
 from api.src.core.config import settings
 from api.src.core.dependencies import resolve_title
+from api.src.schemas.translate import TranslateTextRequest, TranslateTextResponse
 from api.src.services.translation_service import TranslationService
 
 router = APIRouter(prefix="/api")
 
 _translation_service = TranslationService(ui_dir=settings.data_dir)
+
+
+@router.post("/translate_text", response_model=TranslateTextResponse)
+async def translate_text_endpoint(body: TranslateTextRequest):
+    """Translate a single string (e.g. ES segment text back to EN for semantic scoring)."""
+    if not body.text.strip():
+        return TranslateTextResponse(text="")
+    _translation_service.install_language_pack(body.from_code, body.to_code)
+    out = _translation_service.translate_sentence(
+        body.text.strip(), body.from_code, body.to_code
+    )
+    return TranslateTextResponse(text=out)
 
 
 @router.post("/translate/{video_id}")

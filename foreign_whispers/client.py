@@ -102,6 +102,21 @@ class FWClient:
             params={"target_language": target_language},
         )
 
+    def translate_text(
+        self,
+        text: str,
+        from_code: str = "es",
+        to_code: str = "en",
+    ) -> dict:
+        """Translate one string via Argos (same engine as full-transcript translate).
+
+        Returns ``{text}``.
+        """
+        return self._post(
+            "/api/translate_text",
+            json={"text": text, "from_code": from_code, "to_code": to_code},
+        )
+
     def tts(
         self,
         video_id: str,

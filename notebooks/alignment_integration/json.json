@@ -1,0 +1,200 @@
+{'clip_evaluation_report': {'mean_abs_duration_error_s': 1.169, 'pct_severe_stretch': 0.0, 'n_gap_shifts': 0, 'n_translation_retries': 23, 'total_cumulative_drift_s': 0.0
+    }, 'semantic_back_translations_en': [
+        {'index': 0, 'cosine_similarity': 0.9705116748809814, 'original_text': '60 minutes over time.', 'translated_text': '60 minutos con el tiempo.', 'back_translation': '60 minutes in time.'
+        },
+        {'index': 1, 'cosine_similarity': 0.9704523086547852, 'original_text': "What's the worst case scenario that you're worried about?", 'translated_text': '¿Cuál es el peor escenario que te preocupa?', 'back_translation': "What's the worst scenario you're worried about?"
+        },
+        {'index': 2, 'cosine_similarity': 0.8683993816375732, 'original_text': 'Is that it is closed for weeks and weeks and weeks here and you start to see the global', 'translated_text': 'Es que está cerrado durante semanas y semanas y semanas aquí y empiezas a ver el mundo', 'back_translation': "It's closed for weeks and weeks and weeks here and you start seeing the world."
+        },
+        {'index': 3, 'cosine_similarity': 0.9119003415107727, 'original_text': 'economy really being impacted because it is the lifeblood to a certain extent.', 'translated_text': 'la economía realmente impactada porque es la sangre de la vida en cierta medida.', 'back_translation': 'the economy really impacted because it is the blood of life to some extent.'
+        },
+        {'index': 4, 'cosine_similarity': 0.8702070713043213, 'original_text': "So the reality is the longer that this goes on, the greater impact it's going to have", 'translated_text': 'Así que la realidad es lo más largo que esto sucede, el mayor impacto que va a tener', 'back_translation': "So reality is as long as this happens, as much impact as it's going to have."
+        },
+        {'index': 5, 'cosine_similarity': 0.8332211971282959, 'original_text': 'across industries across regions.', 'translated_text': 'en todas las industrias de las regiones.', 'back_translation': 'in all industries in the regions.'
+        },
+        {'index': 6, 'cosine_similarity': 0.7549343705177307, 'original_text': "This week on 60 minutes, we report on the street of Hormuz that narrow waterway on Iran's", 'translated_text': 'Esta semana en 60 minutos, informamos en la calle de Hormuz que estrecha la vía de agua en Irán', 'back_translation': 'This week in 60 minutes, we report on Hormuz Street that it narrows the water line in Iran'
+        },
+        {'index': 7, 'cosine_similarity': 0.974324107170105, 'original_text': 'southern coast, it connects the oil-rich countries of the Persian Gulf to the rest of the world.', 'translated_text': 'costa sur, conecta los países ricos en petróleo del Golfo Pérsico al resto del mundo.', 'back_translation': 'south coast, connects the oil-rich countries of the Persian Gulf to the rest of the world.'
+        },
+        {'index': 8, 'cosine_similarity': 0.9710851907730103, 'original_text': "The ships that pass through it carry a fifth of the world's oil and a significant amount", 'translated_text': 'Las naves que pasan por ella llevan una quinta parte del petróleo del mundo y una cantidad significativa', 'back_translation': "Ships passing through it carry one fifth of the world's oil and a significant amount"
+        },
+        {'index': 9, 'cosine_similarity': 0.978101909160614, 'original_text': 'of natural gas.', 'translated_text': 'de gas natural.', 'back_translation': 'natural gas.'
+        },
+        {'index': 10, 'cosine_similarity': 0.9965782761573792, 'original_text': 'Now with that traffic nearly stopped by the war in Iran, the world is beginning to feel', 'translated_text': 'Ahora con ese tráfico casi detenido por la guerra en Irán, el mundo está empezando a sentir', 'back_translation': 'Now with that traffic almost stopped by the war in Iran, the world is starting to feel'
+        },
+        {'index': 11, 'cosine_similarity': 0.98161780834198, 'original_text': 'the impact from energy markets to national economies.', 'translated_text': 'los efectos de los mercados energéticos a las economías nacionales.', 'back_translation': 'the effects of energy markets on national economies.'
+        },
+        {'index': 12, 'cosine_similarity': 0.9564812183380127, 'original_text': "You can see that there's a lot of movement here, right?", 'translated_text': 'Puedes ver que hay mucho movimiento aquí, ¿verdad?', 'back_translation': "You can see there's a lot of movement here, can't you?"
+        },
+        {'index': 13, 'cosine_similarity': 0.9875229597091675, 'original_text': 'We spoke with Matt Smith, an oil market analyst for Kepler, which tracks global trade and shipping.', 'translated_text': 'Hablamos con Matt Smith, analista del mercado petrolero de Kepler, que rastrea el comercio mundial y el transporte marítimo.', 'back_translation': "We talked to Matt Smith, an analyst at Kepler's oil market, who tracks world trade and shipping."
+        },
+        {'index': 14, 'cosine_similarity': 0.916138768196106, 'original_text': 'He has been studying ship movement in the state of Hormuz.', 'translated_text': 'Ha estado estudiando el movimiento naval en el estado de Hormuz.', 'back_translation': "He's been studying the naval movement in Hormuz State."
+        },
+        {'index': 15, 'cosine_similarity': 0.9989250302314758, 'original_text': 'Smith told us the region moves millions of barrels of oil a day.', 'translated_text': 'Smith nos dijo que la región mueve millones de barriles de petróleo al día.', 'back_translation': 'Smith told us that the region moves millions of barrels of oil a day.'
+        },
+        {'index': 16, 'cosine_similarity': 1.0000001192092896, 'original_text': 'For most Gulf states, the only way for their oil to reach the global market is through', 'translated_text': 'Para la mayoría de los estados del Golfo, la única manera para que su petróleo alcance el mercado global es a través de', 'back_translation': 'For most Gulf states, the only way for their oil to reach the global market is through'
+        },
+        {'index': 17, 'cosine_similarity': 0.9999999403953552, 'original_text': 'the strait.', 'translated_text': 'el estrecho.', 'back_translation': 'the strait.'
+        },
+        {'index': 18, 'cosine_similarity': 0.952957034111023, 'original_text': 'So these supplies are stuck because of the conflict.', 'translated_text': 'Así que estos suministros están atrapados debido al conflicto.', 'back_translation': 'So these supplies are trapped because of the conflict.'
+        },
+        {'index': 19, 'cosine_similarity': 0.9999998807907104, 'original_text': 'Saudi Arabia benefits from decades of good planning.', 'translated_text': 'Arabia Saudita se beneficia de décadas de buena planificación.', 'back_translation': 'Saudi Arabia benefits from decades of good planning.'
+        },
+        {'index': 20, 'cosine_similarity': 0.9949063062667847, 'original_text': 'Saudi Arabia is a relative winner from this situation in that it has a pipeline called', 'translated_text': 'Arabia Saudita es un relativo ganador de esta situación en que tiene un oleoducto llamado', 'back_translation': 'Saudi Arabia is a relative winner of this situation in which it has a pipeline called'
+        },
+        {'index': 21, 'cosine_similarity': 0.8141012191772461, 'original_text': 'the US Pipeline that was built for exactly this reason.', 'translated_text': 'el Pipeline estadounidense que fue construido por esta razón.', 'back_translation': 'the American Pipeline that was built for this reason.'
+        },
+        {'index': 22, 'cosine_similarity': 0.8284724950790405, 'original_text': 'It was concerned about the strait of Hormuz being this choke point.', 'translated_text': 'Estaba preocupado por el estrecho de Hormuz siendo este punto de ahogamiento.', 'back_translation': 'I was worried about the Hormuz Strait being this drowning point.'
+        },
+        {'index': 23, 'cosine_similarity': 0.994207501411438, 'original_text': "And so that pipe goes across to the Red Sea to Yanbu and we're starting to see exports", 'translated_text': 'Y así esa tubería va al Mar Rojo a Yanbu y estamos empezando a ver las exportaciones', 'back_translation': "And so that pipe goes to the Red Sea to Yanbu and we're starting to see exports"
+        },
+        {'index': 24, 'cosine_similarity': 0.9138112664222717, 'original_text': 'picking up from there instead.', 'translated_text': 'recogiendo desde allí.', 'back_translation': 'Picking up from there.'
+        },
+        {'index': 25, 'cosine_similarity': 0.9379240870475769, 'original_text': 'So essentially, Saudi Arabia is able to reroute its crude to be able to load in the Red Sea,', 'translated_text': 'Así que en esencia, Arabia Saudita es capaz de desviar su crudo para poder cargar en el Mar Rojo,', 'back_translation': 'So in essence, Saudi Arabia is able to divert its crude to be able to load into the Red Sea,'
+        },
+        {'index': 26, 'cosine_similarity': 0.9817214012145996, 'original_text': "whereas the likes of Iraq, Kuwait and Qatar don't have the ability to do that, so they're", 'translated_text': 'Mientras que los similares de Irak, Kuwait y Qatar no tienen la capacidad de hacer eso, así que son', 'back_translation': 'While the likes of Iraq, Kuwait and Qatar do not have the ability to do that, so they are'
+        },
+        {'index': 27, 'cosine_similarity': 0.8907719850540161, 'original_text': 'having to shut in production.', 'translated_text': 'tener que cerrar en producción.', 'back_translation': 'have to close in production.'
+        },
+        {'index': 28, 'cosine_similarity': 0.9868624210357666, 'original_text': 'Not that Saudi Arabia is able to completely move all of its barrels and export them from', 'translated_text': 'No es que Arabia Saudita sea capaz de mover completamente todos sus barriles y exportarlos de', 'back_translation': 'It is not that Saudi Arabia is able to completely move all its barrels and export them from'
+        },
+        {'index': 29, 'cosine_similarity': 0.9773670434951782, 'original_text': 'the other side, but it can do nearly four million barrels a day.', 'translated_text': 'el otro lado, pero puede hacer casi cuatro millones de barriles al día.', 'back_translation': 'The other side, but it can make almost four million barrels a day.'
+        },
+        {'index': 30, 'cosine_similarity': 0.985781729221344, 'original_text': "How would you characterize what's happening in the strait of Hormuz today?", 'translated_text': '¿Cómo caracterizarías lo que está pasando hoy en el estrecho de Hormuz?', 'back_translation': 'How would you characterize what is happening today in the Strait of Hormuz?'
+        },
+        {'index': 31, 'cosine_similarity': 0.9789185523986816, 'original_text': 'Well we are seeing a collapse of a keystone assumption in economics and energy markets.', 'translated_text': 'Bueno, estamos viendo un colapso de una suposición clave en los mercados económicos y energéticos.', 'back_translation': "Well, we're seeing a collapse of a key assumption in the economic and energy markets."
+        },
+        {'index': 32, 'cosine_similarity': 0.928697407245636, 'original_text': 'And if Hormuz is shut for a month, one of the most important bedrock assumptions and', 'translated_text': 'Y si Hormuz está cerrado por un mes, una de las suposiciones más importantes de base y', 'back_translation': 'And if Hormuz is closed for a month, one of the most important assumptions of base and'
+        },
+        {'index': 33, 'cosine_similarity': 0.9830430150032043, 'original_text': 'how the economy works, the global economy works and about security will have collapsed.', 'translated_text': 'cómo funciona la economía, la economía mundial funciona y la seguridad habrá colapsado.', 'back_translation': 'how the economy works, the world economy works, and security will have collapsed.'
+        },
+        {'index': 34, 'cosine_similarity': 0.996233344078064, 'original_text': 'Bob McNally was an energy adviser to President George W. Bush during the Iraq War, who now', 'translated_text': 'Bob McNally era un asesor energético del presidente George W. Bush durante la guerra de Irak, que ahora', 'back_translation': 'Bob McNally was an energy advisor to President George W. Bush during the Iraq War, who now'
+        },
+        {'index': 35, 'cosine_similarity': 0.9626897573471069, 'original_text': 'advises clients on oil and gas markets.', 'translated_text': 'asesora a clientes en mercados de petróleo y gas.', 'back_translation': 'advises customers in oil and gas markets.'
+        },
+        {'index': 36, 'cosine_similarity': 0.9608650803565979, 'original_text': 'He told us the disruption is already having global impacts, including in Russia.', 'translated_text': 'Nos dijo que la perturbación ya está teniendo impactos globales, incluso en Rusia.', 'back_translation': 'He told us that the disturbance is already having global impacts, even in Russia.'
+        },
+        {'index': 37, 'cosine_similarity': 0.979659914970398, 'original_text': 'This conflict and the oil price increase has done two things to help Putin.', 'translated_text': 'Este conflicto y el aumento del precio del petróleo han hecho dos cosas para ayudar a Putin.', 'back_translation': 'This conflict and rising oil prices have done two things to help Putin.'
+        },
+        {'index': 38, 'cosine_similarity': 0.7601475715637207, 'original_text': "One, it's lifted the overall price of crude oil.", 'translated_text': 'Uno, se levanta el precio total del crudo.', 'back_translation': 'One, the total price of crude is raised.'
+        },
+        {'index': 39, 'cosine_similarity': 0.8486089110374451, 'original_text': "And secondly, it's eliminated that discount, that penalty price that he had to pay.", 'translated_text': 'Y en segundo lugar, se elimina ese descuento, ese precio de penalización que tenía que pagar.', 'back_translation': 'And secondly, you eliminate that discount, that penalty price you had to pay.'
+        },
+        {'index': 40, 'cosine_similarity': 0.9795513153076172, 'original_text': 'Now everybody wants his oil and Yakhrismas came early for Putin, so Putin may be benefiting', 'translated_text': 'Ahora todo el mundo quiere su aceite y Yakhrismas llegó temprano para Putin, así que Putin puede estar beneficiándose', 'back_translation': 'Now everyone wants their oil and Yakhrismas arrived early for Putin, so Putin may be benefiting'
+        },
+        {'index': 41, 'cosine_similarity': 0.8494457006454468, 'original_text': 'temporarily from a budget windfall.', 'translated_text': 'temporalmente de una caída del presupuesto.', 'back_translation': 'temporarily from a fall in the budget.'
+        },
+        {'index': 42, 'cosine_similarity': 0.980806827545166, 'original_text': "But long-term, if Iran stops being the world's top sponsor as terror and even becomes a", 'translated_text': 'Pero a largo plazo, si Irán deja de ser el principal patrocinador del mundo como terror e incluso se convierte en un', 'back_translation': "But in the long run, if Iran ceases to be the world's main sponsor as terror and even becomes a"
+        },
+        {'index': 43, 'cosine_similarity': 0.9902751445770264, 'original_text': 'friend of the United States and Israel other countries, which I hope and expect eventually,', 'translated_text': 'amigo de los Estados Unidos e Israel otros países, que espero y espero eventualmente,', 'back_translation': 'friend of the United States and Israel other countries, which I hope and hope eventually,'
+        },
+        {'index': 44, 'cosine_similarity': 0.9897153377532959, 'original_text': "that's a bad day for Russia, a very bad day for Putin.", 'translated_text': 'Es un mal día para Rusia, un mal día para Putin.', 'back_translation': "It's a bad day for Russia, a bad day for Putin."
+        },
+        {'index': 45, 'cosine_similarity': 0.9736552238464355, 'original_text': "But today, as things stand in the strait of Hormuz, I've seen it said that Russia is", 'translated_text': 'Pero hoy, como las cosas están en el estrecho de Hormuz, he visto decir que Rusia es', 'back_translation': 'But today, as things are in the Strait of Hormuz, I have seen that Russia is'
+        },
+        {'index': 46, 'cosine_similarity': 1.0, 'original_text': 'the clear winner in this war.', 'translated_text': 'el claro ganador en esta guerra.', 'back_translation': 'the clear winner in this war.'
+        },
+        {'index': 47, 'cosine_similarity': 0.8435407876968384, 'original_text': 'No question is benefiting from much greater revenue right now, yeah.', 'translated_text': 'Ninguna pregunta se beneficia de ingresos mucho mayores ahora mismo, sí.', 'back_translation': 'No question benefits from much higher income right now, yes.'
+        },
+        {'index': 48, 'cosine_similarity': 0.9999998807907104, 'original_text': 'I want to ask you about China.', 'translated_text': 'Quiero preguntarte por China.', 'back_translation': 'I want to ask you about China.'
+        },
+        {'index': 49, 'cosine_similarity': 0.9918040037155151, 'original_text': "About half of China's imported oil comes through the strait.", 'translated_text': 'Cerca de la mitad del petróleo importado de China viene por el estrecho.', 'back_translation': 'About half of the oil imported from China comes through the strait.'
+        },
+        {'index': 50, 'cosine_similarity': 0.7530073523521423, 'original_text': 'What does this mean for their economy?', 'translated_text': '¿Qué significa esto para su economía?', 'back_translation': 'What does this mean for your economy?'
+        },
+        {'index': 51, 'cosine_similarity': 0.7096749544143677, 'original_text': 'This is a real gut punch for their economy.', 'translated_text': 'Esto es un verdadero golpe para su economía.', 'back_translation': 'This is a real blow to your economy.'
+        },
+        {'index': 52, 'cosine_similarity': 0.8459032773971558, 'original_text': 'China was getting a sweetheart deal from Iran and, depending heavily on flow from Hormuz.', 'translated_text': 'China estaba recibiendo un trato cariñoso de Irán y, dependiendo del flujo de Hormuz.', 'back_translation': 'China was receiving a loving treatment from Iran and, depending on the flow of Hormuz.'
+        },
+        {'index': 53, 'cosine_similarity': 0.9432548880577087, 'original_text': 'The thought that that could be disrupted for a prolonged period is devastating for the', 'translated_text': 'El pensamiento de que eso podría ser perturbado durante un período prolongado es devastador para el', 'back_translation': 'The thought that this could be disturbed over a prolonged period of time is devastating for the'
+        },
+        {'index': 54, 'cosine_similarity': 0.9999999403953552, 'original_text': 'Chinese economy.', 'translated_text': 'Economía china.', 'back_translation': 'Chinese economy.'
+        },
+        {'index': 55, 'cosine_similarity': 0.9393171072006226, 'original_text': "Now, they have stockpiled a lot of oil, and so they're pretty well supplied in terms", 'translated_text': 'Ahora, han almacenado mucho petróleo, y por lo tanto están bastante bien abastecidos en términos', 'back_translation': "Now, they've stored a lot of oil, and so they're pretty well stocked in terms"
+        },
+        {'index': 56, 'cosine_similarity': 0.9604443907737732, 'original_text': 'of physical supply.', 'translated_text': 'de suministro físico.', 'back_translation': 'physical supply.'
+        },
+        {'index': 57, 'cosine_similarity': 0.8439902663230896, 'original_text': 'But the economic cost will be quite sharp to them.', 'translated_text': 'Pero el costo económico será muy fuerte para ellos.', 'back_translation': 'But the economic cost will be very strong for them.'
+        },
+        {'index': 58, 'cosine_similarity': 0.9796234965324402, 'original_text': 'Even so, China is still benefiting from its relationship with Iran.', 'translated_text': 'Aun así, China sigue beneficiándose de su relación con Irán.', 'back_translation': 'Yet China continues to benefit from its relationship with Iran.'
+        },
+        {'index': 59, 'cosine_similarity': 0.8533240556716919, 'original_text': 'Matt Smith at Kapler told us that Iran has continued to sneak oil out of the strait.', 'translated_text': 'Matt Smith en Kapler nos dijo que Irán ha seguido sacando petróleo del estrecho.', 'back_translation': 'Matt Smith at Kapler told us that Iran has continued to extract oil from the strait.'
+        },
+        {'index': 60, 'cosine_similarity': 0.8664843440055847, 'original_text': "He says they've done it by turning off their ship's transponders that show their location,", 'translated_text': 'Dice que lo han hecho apagando los transpondedores de su nave que muestran su ubicación,', 'back_translation': 'He says they did it by shutting off the transponders on his ship that show his location,'
+        },
+        {'index': 61, 'cosine_similarity': 0.9615957736968994, 'original_text': 'passing through the strait undetected, and sending most of the crude oil on board straight', 'translated_text': 'pasar por el estrecho sin ser detectado, y enviar la mayor parte del crudo a bordo directamente', 'back_translation': 'pass through the strait undetected, and ship most of the crude oil on board directly'
+        },
+        {'index': 62, 'cosine_similarity': 0.9305766820907593, 'original_text': 'to China.', 'translated_text': 'a China.', 'back_translation': 'China.'
+        },
+        {'index': 63, 'cosine_similarity': 0.9714879393577576, 'original_text': 'That oil is going to China.', 'translated_text': 'Ese aceite va a China.', 'back_translation': 'That oil goes to China.'
+        },
+        {'index': 64, 'cosine_similarity': 0.9999998807907104, 'original_text': 'Yeah.', 'translated_text': 'Sí.', 'back_translation': 'Yeah.'
+        },
+        {'index': 65, 'cosine_similarity': 1.0, 'original_text': "Let's talk about India.", 'translated_text': 'Hablemos de India.', 'back_translation': "Let's talk about India."
+        },
+        {'index': 66, 'cosine_similarity': 0.9898319840431213, 'original_text': 'India had been under significant pressure from the U.S. to stop buying Russian oil.', 'translated_text': 'India había estado bajo una presión significativa de Estados Unidos para dejar de comprar petróleo ruso.', 'back_translation': 'India had been under significant pressure from the United States to stop buying Russian oil.'
+        },
+        {'index': 67, 'cosine_similarity': 0.834225594997406, 'original_text': "What's the case now?", 'translated_text': '¿Qué pasa ahora?', 'back_translation': 'What happens now?'
+        },
+        {'index': 68, 'cosine_similarity': 0.9308224320411682, 'original_text': 'India overall is hugely dependent on Hormuz flows.', 'translated_text': 'La India en general depende enormemente de los flujos de Hormuz.', 'back_translation': 'India in general depends heavily on Hormuz flows.'
+        },
+        {'index': 69, 'cosine_similarity': 0.7534470558166504, 'original_text': 'It does not have extensive strategic stocks like China does, like the United States does.', 'translated_text': 'No tiene amplias acciones estratégicas como China, como los Estados Unidos.', 'back_translation': 'It has no broad strategic actions like China, like the United States.'
+        },
+        {'index': 70, 'cosine_similarity': 1.0, 'original_text': 'India also requires liquefied petroleum gas, its cooking fuel.', 'translated_text': 'India también requiere gas licuado de petróleo, su combustible para cocinar.', 'back_translation': 'India also requires liquefied petroleum gas, its cooking fuel.'
+        },
+        {'index': 71, 'cosine_similarity': 0.9627546072006226, 'original_text': "Families cook with LPG liquefied petroleum gas that comes from Hormuz and they don't have", 'translated_text': 'Las familias cocinan con gas licuado de GLP que viene de Hormuz y no tienen', 'back_translation': 'Families cook with LPG liquefied gas that comes from Hormuz and do not have'
+        },
+        {'index': 72, 'cosine_similarity': 0.6130459308624268, 'original_text': 'big stockpiles.', 'translated_text': 'grandes reservas.', 'back_translation': 'large reserves.'
+        },
+        {'index': 73, 'cosine_similarity': 0.9934585094451904, 'original_text': 'So, for India, this is an acute crisis.', 'translated_text': 'Por lo tanto, para la India, esta es una crisis aguda.', 'back_translation': 'Therefore, for India, this is an acute crisis.'
+        },
+        {'index': 74, 'cosine_similarity': 0.98931884765625, 'original_text': "In other words, what's happening in the strait of Hormuz impacts the entire world.", 'translated_text': 'En otras palabras, lo que está sucediendo en el estrecho de Hormuz impacta al mundo entero.', 'back_translation': 'In other words, what is happening in the Strait of Hormuz impacts the entire world.'
+        },
+        {'index': 75, 'cosine_similarity': 0.9535813927650452, 'original_text': 'In the United States, gas prices have already jumped by more than 65 cents a gallon since', 'translated_text': 'En los Estados Unidos, los precios del gas ya han subido en más de 65 centavos por galón desde entonces', 'back_translation': 'In the United States, gas prices have already risen by more than 65 cents per gallon since then.'
+        },
+        {'index': 76, 'cosine_similarity': 0.9918472170829773, 'original_text': 'the war started.', 'translated_text': 'La guerra comenzó.', 'back_translation': 'The war began.'
+        },
+        {'index': 77, 'cosine_similarity': 0.9972995519638062, 'original_text': 'And in Asia, which gets most of its oil through the strait, countries like Thailand, Pakistan,', 'translated_text': 'Y en Asia, que obtiene la mayor parte de su petróleo a través del estrecho, países como Tailandia, Pakistán,', 'back_translation': 'And in Asia, which gets most of its oil through the Strait, countries like Thailand, Pakistan,'
+        },
+        {'index': 78, 'cosine_similarity': 0.9788824319839478, 'original_text': 'and Bangladesh are already dealing with fuel shortages and long lines at gas stations as', 'translated_text': 'Bangladesh ya se ocupa de la escasez de combustible y las largas líneas en las estaciones de gas', 'back_translation': 'Bangladesh already deals with fuel shortages and long lines in gas stations'
+        },
+        {'index': 79, 'cosine_similarity': 0.9976364970207214, 'original_text': 'drivers try to fill up.', 'translated_text': 'Los conductores tratan de llenar.', 'back_translation': 'Drivers try to fill up.'
+        },
+        {'index': 80, 'cosine_similarity': 0.9219515919685364, 'original_text': 'Jet and diesel fuel prices have also surged up 25 percent.', 'translated_text': 'Los precios de Jet y diesel también han aumentado un 25%.', 'back_translation': 'Jet and diesel prices have also increased by 25%.'
+        },
+        {'index': 81, 'cosine_similarity': 0.8716855049133301, 'original_text': 'And as a result, higher plane tickets and grocery prices are expected to follow.', 'translated_text': 'Y como resultado, se espera que los billetes de avión más altos y los precios del supermercado sigan.', 'back_translation': 'And as a result, higher airline tickets and supermarket prices are expected to continue.'
+        },
+        {'index': 82, 'cosine_similarity': 0.7949978709220886, 'original_text': 'Give it to me straight.', 'translated_text': 'Dámelo directamente.', 'back_translation': 'Give it to me directly.'
+        },
+        {'index': 83, 'cosine_similarity': 0.9506233334541321, 'original_text': 'What is the worst case scenario that you are predicting here?', 'translated_text': '¿Cuál es el peor escenario que estás prediciendo aquí?', 'back_translation': "What's the worst scenario you're predicting here?"
+        },
+        {'index': 84, 'cosine_similarity': 0.9925903081893921, 'original_text': "I'm predicting that this is going to get worse before it gets better.", 'translated_text': 'Estoy prediciendo que esto va a empeorar antes de que se ponga mejor.', 'back_translation': "I'm predicting this is gonna get worse before it gets better."
+        },
+        {'index': 85, 'cosine_similarity': 0.8338743448257446, 'original_text': 'This is going to be a longer and costier conflict than just about everybody expected.', 'translated_text': 'Esto va a ser un conflicto más largo y más costoso que casi todos esperaban.', 'back_translation': 'This is going to be a longer and more costly conflict that almost everyone expected.'
+        },
+        {'index': 86, 'cosine_similarity': 0.9648547172546387, 'original_text': 'You have said that a prolonged closure of the strait of Hormuz is a guaranteed global', 'translated_text': 'Usted ha dicho que un cierre prolongado del estrecho de Hormuz es un mundo garantizado', 'back_translation': 'You have said that a prolonged closure of the Hormuz Strait is a guaranteed world'
+        },
+        {'index': 87, 'cosine_similarity': 0.9995839595794678, 'original_text': 'recession.', 'translated_text': 'Recesión.', 'back_translation': 'Recession.'
+        },
+        {'index': 88, 'cosine_similarity': 0.726742148399353, 'original_text': 'Do you still stand by that?', 'translated_text': '¿Aún estás de acuerdo?', 'back_translation': 'Do you still agree?'
+        },
+        {'index': 89, 'cosine_similarity': 0.937915027141571, 'original_text': 'Look, yes.', 'translated_text': 'Mira, sí.', 'back_translation': 'Look, yeah.'
+        },
+        {'index': 90, 'cosine_similarity': 0.9977294206619263, 'original_text': 'The world economy cannot grow without 20 percent of its energy supply.', 'translated_text': 'La economía mundial no puede crecer sin el 20% de su suministro energético.', 'back_translation': 'The world economy cannot grow without 20 per cent of its energy supply.'
+        },
+        {'index': 91, 'cosine_similarity': 0.9999999403953552, 'original_text': 'Period.', 'translated_text': 'Período.', 'back_translation': 'Period.'
+        },
+        {'index': 92, 'cosine_similarity': 0.9985871911048889, 'original_text': 'Really do we recognize history in the making?', 'translated_text': '¿De verdad reconocemos la historia en la elaboración?', 'back_translation': 'Do we really recognize history in the making?'
+        },
+        {'index': 93, 'cosine_similarity': 0.9865209460258484, 'original_text': 'But is that what we are witnessing right now?', 'translated_text': '¿Pero eso es lo que estamos presenciando ahora mismo?', 'back_translation': "But is that what we're witnessing right now?"
+        },
+        {'index': 94, 'cosine_similarity': 0.9441803097724915, 'original_text': "We're sitting in the middle of an unprecedented time?", 'translated_text': '¿Estamos sentados en medio de un tiempo sin precedentes?', 'back_translation': 'Are we sitting in the middle of an unprecedented time?'
+        },
+        {'index': 95, 'cosine_similarity': 0.923943281173706, 'original_text': 'Yes.', 'translated_text': 'Sí.', 'back_translation': 'Yeah.'
+        },
+        {'index': 96, 'cosine_similarity': 0.9122486114501953, 'original_text': 'We are experiencing just as a factual matter, the biggest energy disruption in history.', 'translated_text': 'Estamos experimentando como un asunto fáctico, la mayor perturbación energética de la historia.', 'back_translation': 'We are experiencing as a factual matter, the greatest energy disturbance in history.'
+        },
+        {'index': 97, 'cosine_similarity': 0.8636044263839722, 'original_text': "We have to just hope and pray that it doesn't go on for too much longer.", 'translated_text': 'Tenemos que esperar y rezar para que no continúe por demasiado tiempo.', 'back_translation': 'We have to wait and pray that it will not continue for too long.'
+        }
+    ], 'overall_semantic_similarity': 0.9322797260722335
+}

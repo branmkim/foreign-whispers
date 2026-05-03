@@ -26,6 +26,10 @@ dependencies = [
     "setuptools<81",
     "pyyaml>=6.0.3",
     "logfire",
+    # Optional rerank path (get_shorter_translations → Ollama); needs Ollama server (OLLAMA_HOST).
+    "ollama>=0.4",
+    # Gemini rerank fallback: ``from google import genai`` (GOOGLE_API_KEY).
+    "google-genai>=1.0",
 ]
 
 [dependency-groups]
@@ -33,11 +37,17 @@ dev = [
     "pytest",
     "httpx",
     "nbconvert>=7.17.0",
+    "scikit-learn>=1.4",
 ]
 alignment = [
     "logfire",
     "silero-vad",
     "pyannote.audio",
+    # Keep torchcodec aligned with torch 2.10 (torchcodec 0.11 targets torch 2.11).
+    "torchcodec>=0.10,<0.11",
+    # CUDA-enabled TorchCodec needs libnvrtc and libnpp (torchcodec README); slim images have no system CUDA.
+    "nvidia-cuda-nvrtc>=13.0,<14; sys_platform == 'linux'",
+    "nvidia-npp-cu12>=12.3,<13; sys_platform == 'linux'",
 ]
 
 [tool.uv]
@@ -59,6 +69,8 @@ explicit = true
 torch = { index = "pytorch-cu128" }
 torchaudio = { index = "pytorch-cu128" }
 torchvision = { index = "pytorch-cu128" }
+# torchcodec+cu128: see alignment group nvidia-* wheels; Docker entrypoint sets LD_LIBRARY_PATH (scripts/docker-cuda-ld.sh).
+torchcodec = { index = "pytorch-cu128" }
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
